@@ -39,22 +39,17 @@ namespace '/api/lvl2' do
     if (tipo_cluster == 'ocp')
       logger.info("url: #{urlapi}/api/v1/preciocluster?region=#{region_cluster}&wn=#{wn}&flavor=#{flavor}&infra_type=#{infra_type}")
       respuesta_cluster = RestClient.get "#{urlapi}/api/v1/preciocluster?region=#{region_cluster}&wn=#{wn}&flavor=#{flavor}&infra_type=#{infra_type}", {:params => {}}
-      cluster=JSON.parse(respuesta_cluster.to_s)
-      logger.info("RestClient: " +respuesta_cluster.to_s)
-      logger.info("JSON: "+ cluster.to_s)
-      precio_final=precio_final+cluster[0]["precio"]
-      resultado.push(cluster: cluster[0])
     end
 
     if (tipo_cluster == 'iks')
       logger.info("url: #{urlapi}/api/v1/ikspreciocluster?region=#{region_cluster}&wn=#{wn}&flavor=#{flavor}&infra_type=#{infra_type}")
       respuesta_cluster = RestClient.get "#{urlapi}/api/v1/ikspreciocluster?region=#{region_cluster}&wn=#{wn}&flavor=#{flavor}&infra_type=#{infra_type}", {:params => {}}
-      cluster=JSON.parse(respuesta_cluster.to_s)
-      logger.info("RestClient: " +respuesta_cluster.to_s)
-      logger.info("JSON: "+ cluster.to_s)
-      precio_final=precio_final+cluster[0]["precio"]
-      resultado.push(cluster: cluster[0])
     end
+
+    cluster=JSON.parse(respuesta_cluster.to_s)
+    logger.info("RestClient: " +respuesta_cluster.to_s)
+    logger.info("JSON: "+ cluster.to_s)
+    precio_final=precio_final+cluster[0]["precio"]
 
     ##########################
     # Calculo Block Storage
@@ -72,8 +67,7 @@ namespace '/api/lvl2' do
     logger.info("RestClient: " +respuestastorage.to_s);
     logger.info("JSON: "+ block_storage.to_s);
     precio_final=precio_final+block_storage[0]["preciounidadrestante"].to_f
-    resultado.push(block_storage: block_storage[0])
-
+    
     ##########################
     # Calculo DB for ETCD
     ##########################
@@ -91,7 +85,6 @@ namespace '/api/lvl2' do
     logger.info("RestClient: " + respuesta_db_etcd.to_s)
     logger.info("JSON: " + db_etcd.to_s)
     precio_final = precio_final + db_etcd[0]["precio"].to_f
-    resultado.push(db_etcd:db_etcd[0])
 
     ##########################
     # Calculo Portworx
@@ -109,9 +102,8 @@ namespace '/api/lvl2' do
     logger.info("RestClient: " + respuesta_portworx.to_s)
     logger.info("JSON: " + portworx.to_s)
     precio_final = precio_final + portworx[0]["precio"].to_f
-    resultado.push(portworx:portworx[0])
 
-    resultado.push({preciototal:precio_final.round(2)})
+    resultado.push(cluster: cluster[0], block_storage: block_storage[0], db_etcd:db_etcd[0], portworx:portworx[0], preciototal:precio_final.round(2))
     resultado.to_json
   end
 end
