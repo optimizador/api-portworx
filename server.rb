@@ -26,30 +26,55 @@ namespace '/api/lvl2' do
     resultado = []
     precio_final = 0
     ##########################
-    # Calculo clúster 
+    # Calculo clúster Productivo
     ##########################
-    tipo_cluster = "#{params['tipo_cluster']}" #IKS o OCP
-    wn = "#{params['wn']}"
-    region_cluster = "#{params['region_cluster']}"
-    infra_type = "#{params['infra_type']}"
-    flavor = "#{params['flavor']}"
+    tipo_cluster_prod = "#{params['tipo_cluster_prod']}" #IKS o OCP
+    wn_prod = "#{params['wn_prod']}"
+    region_cluster_prod = "#{params['region_cluster_prod']}"
+    infra_type_prod = "#{params['infra_type_prod']}"
+    flavor_prod = "#{params['flavor_prod']}"
 
-    cluster = {}
-
-    if (tipo_cluster == 'ocp')
-      logger.info("url: #{urlapi}/api/v1/preciocluster?region=#{region_cluster}&wn=#{wn}&flavor=#{flavor}&infra_type=#{infra_type}")
-      respuesta_cluster = RestClient.get "#{urlapi}/api/v1/preciocluster?region=#{region_cluster}&wn=#{wn}&flavor=#{flavor}&infra_type=#{infra_type}", {:params => {}}
+    if (tipo_cluster_prod == 'ocp')
+      logger.info("url: #{urlapi}/api/v1/preciocluster?region=#{region_cluster_prod}&wn=#{wn_prod}&flavor=#{flavor_prod}&infra_type=#{infra_type_prod}")
+      respuesta_cluster = RestClient.get "#{urlapi}/api/v1/preciocluster?region=#{region_cluster_prod}&wn=#{wn_prod}&flavor=#{flavor_prod}&infra_type=#{infra_type_prod}", {:params => {}}
     end
 
-    if (tipo_cluster == 'iks')
-      logger.info("url: #{urlapi}/api/v1/ikspreciocluster?region=#{region_cluster}&wn=#{wn}&flavor=#{flavor}&infra_type=#{infra_type}")
-      respuesta_cluster = RestClient.get "#{urlapi}/api/v1/ikspreciocluster?region=#{region_cluster}&wn=#{wn}&flavor=#{flavor}&infra_type=#{infra_type}", {:params => {}}
+    if (tipo_cluster_prod == 'iks')
+      logger.info("url: #{urlapi}/api/v1/ikspreciocluster?region=#{region_cluster_prod}&wn=#{wn_prod}&flavor=#{flavor_prod}&infra_type=#{infra_type_prod}")
+      respuesta_cluster = RestClient.get "#{urlapi}/api/v1/ikspreciocluster?region=#{region_cluster_prod}&wn=#{wn_prod}&flavor=#{flavor_prod}&infra_type=#{infra_type_prod}", {:params => {}}
     end
 
-    cluster=JSON.parse(respuesta_cluster.to_s)
+    cluster_prod = {}
+    cluster_prod=JSON.parse(respuesta_cluster.to_s)
     logger.info("RestClient: " +respuesta_cluster.to_s)
-    logger.info("JSON: "+ cluster.to_s)
-    precio_final=precio_final+cluster[0]["precio"]
+    logger.info("JSON: "+ cluster_prod.to_s)
+    precio_final=precio_final+cluster_prod[0]["precio"]
+
+    ##########################
+    # Calculo clúster DR
+    ##########################
+
+    tipo_cluster_dr = "#{params['tipo_cluster_dr']}" #IKS o OCP
+    wn_dr = "#{params['wn_dr']}"
+    region_cluster_dr = "#{params['region_cluster_dr']}"
+    infra_type_dr = "#{params['infra_type_dr']}"
+    flavor_dr = "#{params['flavor_dr']}"
+
+    if (tipo_cluster_dr == 'ocp')
+      logger.info("url: #{urlapi}/api/v1/preciocluster?region=#{region_cluster_dr}&wn=#{wn_dr}&flavor=#{flavor_dr}&infra_type=#{infra_type_dr}")
+      respuesta_cluster = RestClient.get "#{urlapi}/api/v1/preciocluster?region=#{region_cluster_dr}&wn=#{wn_dr}&flavor=#{flavor_dr}&infra_type=#{infra_type_dr}", {:params => {}}
+    end
+
+    if (tipo_cluster_dr == 'iks')
+      logger.info("url: #{urlapi}/api/v1/ikspreciocluster?region=#{region_cluster_dr}&wn=#{wn_dr}&flavor=#{flavor_dr}&infra_type=#{infra_type_dr}")
+      respuesta_cluster = RestClient.get "#{urlapi}/api/v1/ikspreciocluster?region=#{region_cluster_dr}&wn=#{wn_dr}&flavor=#{flavor_dr}&infra_type=#{infra_type_dr}", {:params => {}}
+    end
+
+    cluster_dr = {}
+    cluster_dr=JSON.parse(respuesta_cluster.to_s)
+    logger.info("RestClient: " +respuesta_cluster.to_s)
+    logger.info("JSON: "+ cluster_dr.to_s)
+    precio_final=precio_final+cluster_dr[0]["precio"]
 
     ##########################
     # Calculo Block Storage
@@ -84,26 +109,47 @@ namespace '/api/lvl2' do
     db_etcd = JSON.parse(respuesta_db_etcd.to_s)
     logger.info("RestClient: " + respuesta_db_etcd.to_s)
     logger.info("JSON: " + db_etcd.to_s)
-    precio_final = precio_final + db_etcd[0]["precio"].to_f
+    precio_final = precio_final + (db_etcd[0]["precio"].to_f * 2) #Se multiplica por 2 porque cada cluster tiene su propio db for etcd
 
     ##########################
     # Calculo Portworx
     ##########################
 
-    region_portworx = "#{params['region_portworx']}"
-    tipo_portworx = infra_type
-    wn_portworx = wn
+    region_portworx = "dallas"
+    tipo_portworx_prod = infra_type_prod
+    wn_portworx_prod = wn_prod
 
-    portworx = {}
+    portworx_prod = {}
 
     logger.info("url: ")
-    respuesta_portworx = RestClient.get "#{urlapi2}/api/v1/portworxprecio?region=#{region_portworx}&tipo=#{tipo_portworx}&workers=#{wn_portworx}"
-    portworx = JSON.parse(respuesta_portworx.to_s)
+    respuesta_portworx = RestClient.get "#{urlapi2}/api/v1/portworxprecio?region=#{region_portworx}&tipo=#{tipo_portworx_prod}&workers=#{wn_portworx_prod}"
+    portworx_prod = JSON.parse(respuesta_portworx.to_s)
     logger.info("RestClient: " + respuesta_portworx.to_s)
-    logger.info("JSON: " + portworx.to_s)
-    precio_final = precio_final + portworx[0]["precio"].to_f
+    logger.info("JSON: " + portworx_prod.to_s)
+    precio_final = precio_final + portworx_prod[0]["precio"].to_f
+    
+    ##########################
+    # Calculo Portworx
+    ##########################
 
-    resultado.push(cluster: cluster[0], block_storage: block_storage[0], db_etcd:db_etcd[0], portworx:portworx[0], preciototal:precio_final.round(2))
+    region_portworx = "dallas"
+    tipo_portworx_dr = infra_type_dr
+    wn_portworx_dr = wn_dr
+
+    portworx_dr = {}
+
+    logger.info("url: ")
+    respuesta_portworx = RestClient.get "#{urlapi2}/api/v1/portworxprecio?region=#{region_portworx}&tipo=#{tipo_portworx_dr}&workers=#{wn_portworx_dr}"
+    portworx_dr = JSON.parse(respuesta_portworx.to_s)
+    logger.info("RestClient: " + respuesta_portworx.to_s)
+    logger.info("JSON: " + portworx_dr.to_s)
+    precio_final = precio_final + portworx_dr[0]["precio"].to_f
+
+    ##########################
+    # JSON Final
+    ##########################
+    
+    resultado.push(cluster_prod: cluster_prod[0], cluster_dr: cluster_dr[0], portworx_prod:portworx_prod[0], portworx_dr:portworx_dr[0], block_storage: block_storage[0], db_etcd:db_etcd[0], preciototal:precio_final.round(2))
     resultado.to_json
   end
 end
