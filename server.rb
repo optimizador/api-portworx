@@ -174,7 +174,7 @@ namespace '/api/v1' do
     precio=0
     begin
       logger.info("calculando precio portworx")
-      if tipo == 'baremetal'
+      if tipo == 'bm'
         precio = workers.to_i*0.928*720
       end
       if tipo == 'shared' || tipo == 'dedicated'
