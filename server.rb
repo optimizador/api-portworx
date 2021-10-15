@@ -18,7 +18,7 @@ namespace '/api/lvl2' do
   end
 
   #urlapi="localhost:8080"
-  urlapi="https://apis.9sxuen7c9q9.us-south.codeengine.appdomain.cloud"
+  urlapi="http://169.57.7.203:30778"
   urlapi2 = "localhost:8080"
 
   get '/portworxsol' do #Asynchronous DR
