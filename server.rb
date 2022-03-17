@@ -18,8 +18,8 @@ namespace '/api/lvl2' do
   end
 
   #urlapi="localhost:8080"
-  urlapi="http://169.57.7.203:30778"
-  urlapi2 = "localhost:8080"
+  urlapi="https://apis.9sxuen7c9q9.us-south.codeengine.appdomain.cloud"
+  urlapi2 = "https://apis-portworx.ioi17ary7au.us-south.codeengine.appdomain.cloud"
 
   get '/portworxsol' do #Asynchronous DR
     logger = Logger.new(STDOUT)
