@@ -3,7 +3,7 @@ require 'sinatra'
 require 'pg'
 require "sinatra/namespace"
 require 'rest-client'
-
+require 'thin' 
 set :bind, '0.0.0.0'
 set :port, 8080
 
