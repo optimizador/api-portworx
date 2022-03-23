@@ -3,12 +3,44 @@ require 'sinatra'
 require 'pg'
 require "sinatra/namespace"
 require 'rest-client'
-require 'thin' 
+require 'thin'
 set :bind, '0.0.0.0'
 set :port, 8080
 set :timeout, 60
 
 
+#########################
+# Función calculo precio portworx
+#########################
+def portworxprecio(region="dallas", tipo="dedicated",workers=3)
+  logger = Logger.new(STDOUT)
+  precio=0
+
+  logger.info("Función: calculando precio portworx")
+  if tipo == 'bm'
+    precio = workers.to_i*0.928*720
+  end
+  if tipo == 'shared' || tipo == 'dedicated'
+    precio = workers.to_i*0.357*720
+  end
+  logger.info("Función: precio portworx: "+precio.round(2).to_s)
+  resultado={region: region, workers: workers, tipo: tipo, precio: precio.round(2).to_f}
+  return resultado.to_json
+end
+
+def dbforetcdprecio(region = "dallas", ram = 8, storage=128, cores=3)
+  precio_ram = 17.25
+  precio_storage = 2.001
+  precio_cores = 103.5
+  precio = 0
+  resultado = []
+
+    logger.info("FUNCION: calculando precio db for etcd")
+    precio = (ram.to_i * precio_ram) + (storage.to_i * precio_storage) + (cores.to_i * precio_cores)
+    logger.info("FUNCION: precioETCD: "+precio.round(2).to_s)
+    resultado={region: region, ram: ram, storage: storage, cores: cores, precio: precio.round(2).to_f}
+  return resultado.to_json
+end
 get '/' do
     'APIs Portworx'
 end
@@ -21,6 +53,9 @@ namespace '/api/lvl2' do
   #urlapi="localhost:8080"
   urlapi="http://apis.ioi17ary7au.svc.cluster.local"
   urlapi2 = "http://apis-portworx.ioi17ary7au.svc.cluster.local"
+
+  urlapi="https://apis.9sxuen7c9q9.us-south.codeengine.appdomain.cloud"
+  urlapi2 = "localhost:8080"
 
   get '/portworxsol' do #Asynchronous DR
     logger = Logger.new(STDOUT)
@@ -84,7 +119,7 @@ namespace '/api/lvl2' do
     iops = "#{params['iops']}"
     region_storage = "#{params['region_storage']}"
     storage = "#{params['storage']}"
-    
+
     block_storage = {}
 
     logger.info("url: #{urlapi}/api/v1/sizingblockstorage?region=#{region_storage}&iops=#{iops}&storage=#{storage}")
@@ -93,7 +128,7 @@ namespace '/api/lvl2' do
     logger.info("RestClient: " +respuestastorage.to_s);
     logger.info("JSON: "+ block_storage.to_s);
     precio_final=precio_final+block_storage[0]["preciounidadrestante"].to_f
-    
+
     ##########################
     # Calculo DB for ETCD
     ##########################
@@ -104,13 +139,10 @@ namespace '/api/lvl2' do
     cores_etcd = "#{params['cores_etcd']}"
 
     db_etcd = {}
-
-    logger.info("url: #{urlapi2}/api/v1/dbforetcdprecio?region=#{region_etcd}&ram=#{ram_etcd}&storage=#{storage_etcd}&cores=#{cores_etcd}")
-    respuesta_db_etcd = RestClient.get "#{urlapi2}/api/v1/dbforetcdprecio?region=#{region_etcd}&ram=#{ram_etcd}&storage=#{storage_etcd}&cores=#{cores_etcd}", {:params => {}}
-    db_etcd = JSON.parse(respuesta_db_etcd.to_s)
-    logger.info("RestClient: " + respuesta_db_etcd.to_s)
-    logger.info("JSON: " + db_etcd.to_s)
-    precio_final = precio_final + (db_etcd[0]["precio"].to_f * 2) #Se multiplica por 2 porque cada cluster tiene su propio db for etcd
+    db_etcd=JSON.parse(dbforetcdprecio(region = "dallas", ram = 8, storage=128, cores=3))
+    logger.info("Saluda JSON ETCD Funcion: " + db_etcd.to_s)
+    logger.info("Precio JSON ETCD Funcion: " + db_etcd["precio"].to_s)
+    precio_final = precio_final + (db_etcd["precio"].to_f * 2) #Se multiplica por 2 porque cada cluster tiene su propio db for etcd
 
     ##########################
     # Calculo Portworx
@@ -122,13 +154,14 @@ namespace '/api/lvl2' do
 
     portworx_prod = {}
 
-    logger.info("url: ")
-    respuesta_portworx = RestClient.get "#{urlapi2}/api/v1/portworxprecio?region=#{region_portworx}&tipo=#{tipo_portworx_prod}&workers=#{wn_portworx_prod}"
-    portworx_prod = JSON.parse(respuesta_portworx.to_s)
-    logger.info("RestClient: " + respuesta_portworx.to_s)
+    portworx_prod = JSON.parse(portworxprecio(region=region_portworx, tipo=tipo_portworx_prod,workers=wn_portworx_prod))
+
+#    respuesta_portworx = RestClient.get "#{urlapi2}/api/v1/portworxprecio?region=#{region_portworx}&tipo=#{tipo_portworx_prod}&workers=#{wn_portworx_prod}"
+#    portworx_prod = JSON.parse(respuesta_portworx.to_s)
+#    logger.info("RestClient: " + respuesta_portworx.to_s)
     logger.info("JSON: " + portworx_prod.to_s)
-    precio_final = precio_final + portworx_prod[0]["precio"].to_f
-    
+    precio_final = precio_final + portworx_prod["precio"].to_f
+
     ##########################
     # Calculo Portworx
     ##########################
@@ -140,17 +173,19 @@ namespace '/api/lvl2' do
     portworx_dr = {}
 
     logger.info("url: ")
-    respuesta_portworx = RestClient.get "#{urlapi2}/api/v1/portworxprecio?region=#{region_portworx}&tipo=#{tipo_portworx_dr}&workers=#{wn_portworx_dr}"
-    portworx_dr = JSON.parse(respuesta_portworx.to_s)
-    logger.info("RestClient: " + respuesta_portworx.to_s)
+    portworx_dr = JSON.parse(portworxprecio(region=region_portworx, tipo=tipo_portworx_dr,workers=wn_portworx_dr))
+
+    #respuesta_portworx = RestClient.get "#{urlapi2}/api/v1/portworxprecio?region=#{region_portworx}&tipo=#{tipo_portworx_dr}&workers=#{wn_portworx_dr}"
+    #portworx_dr = JSON.parse(respuesta_portworx.to_s)
+    #logger.info("RestClient: " + respuesta_portworx.to_s)
     logger.info("JSON: " + portworx_dr.to_s)
-    precio_final = precio_final + portworx_dr[0]["precio"].to_f
+    precio_final = precio_final + portworx_dr["precio"].to_f
 
     ##########################
     # JSON Final
     ##########################
-    
-    resultado.push(cluster_prod: cluster_prod[0], cluster_dr: cluster_dr[0], portworx_prod:portworx_prod[0], portworx_dr:portworx_dr[0], block_storage: block_storage[0], db_etcd:db_etcd[0], preciototal:precio_final.round(2))
+
+    resultado.push(cluster_prod: cluster_prod[0], cluster_dr: cluster_dr[0], portworx_prod:portworx_prod, portworx_dr:portworx_dr, block_storage: block_storage[0], db_etcd:db_etcd, preciototal:precio_final.round(2))
     resultado.to_json
   end
 end
@@ -206,14 +241,21 @@ namespace '/api/v1' do
     precio_cores = 103.5
     precio = 0
     resultado = []
-    begin
-      logger.info("calculando precio db for etcd")
-      precio = (ram.to_i * precio_ram) + (storage.to_i * precio_storage) + (cores.to_i * precio_cores)
-      logger.info("precio: "+precio.round(2).to_s)
-      resultado.push({ region: region, ram: ram, storage: storage, cores: cores, precio: precio.round(2).to_f})
-    rescue PG::Error => e
-      logger.info(e.message.to_s)
-    end
+    db_etcd=JSON.parse(dbforetcdprecio(region = "dallas", ram = 8, storage=128, cores=3))
+    logger.info("JSON ETCD Funcion: " + db_etcd.to_s)
+    logger.info("Precio JSON ETCD Funcion: " + db_etcd["precio"].to_s)
+    resultado.push(db_etcd)
+    #precio_final = precio_final + (db_etcd["precio"].to_f * 2) #Se multiplica por 2 porque cada cluster tiene su propio db for etcd
+
+    #begin
+      #logger.info("calculando precio db for etcd")
+      #precio = (ram.to_i * precio_ram) + (storage.to_i * precio_storage) + (cores.to_i * precio_cores)
+      #logger.info("precio: "+precio.round(2).to_s)
+      #resultado.push({ region: region, ram: ram, storage: storage, cores: cores, precio: precio.round(2).to_f})
+      #resultado.push(db_etcd)
+    #rescue PG::Error => e
+    #  logger.info(e.message.to_s)
+    #end
     resultado.to_json
   end
 end
