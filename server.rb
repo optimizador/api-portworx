@@ -6,6 +6,7 @@ require 'rest-client'
 require 'thin' 
 set :bind, '0.0.0.0'
 set :port, 8080
+set :timeout: 60
 
 
 get '/' do
